@@ -2,8 +2,18 @@
 name = "contextlocal"
 version = "0.1.0"
 description = "Useful wrappers around contextvars extracted from Werkzeug"
+license = "BSD-3-Clause"
 authors = ["Maxwell Koo <mjkoo90@gmail.com>"]
 readme = "README.md"
+homepage = "https://github.com/mjkoo/contextlocal"
+repository = "https://github.com/mjkoo/contextlocal"
+documentation = "https://werkzeug.palletsprojects.com/en/latest/local/"
+keywords = ["contextvars", "locals", "proxy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 
 [tool.poetry.dependencies]
 python = "^3.7"
