@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "contextlocal"
 version = "0.1.0"
-description = ""
+description = "Useful wrappers around contextvars extracted from Werkzeug"
 authors = ["Maxwell Koo <mjkoo90@gmail.com>"]
 readme = "README.md"
 
