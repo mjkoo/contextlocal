@@ -4,30 +4,10 @@ import operator
 import typing as t
 from contextvars import ContextVar
 from functools import partial
-from functools import update_wrapper
 from operator import attrgetter
-
-from .wsgi import ClosingIterator
-
-if t.TYPE_CHECKING:
-    from _typeshed.wsgi import StartResponse
-    from _typeshed.wsgi import WSGIApplication
-    from _typeshed.wsgi import WSGIEnvironment
 
 T = t.TypeVar("T")
 F = t.TypeVar("F", bound=t.Callable[..., t.Any])
-
-
-def release_local(local: t.Union["Local", "LocalStack"]) -> None:
-    """Release the data for the current context in a :class:`Local` or
-    :class:`LocalStack` without using a :class:`LocalManager`.
-
-    This should not be needed for modern use cases, and may be removed
-    in the future.
-
-    .. versionadded:: 0.6.1
-    """
-    local.__release_local__()
 
 
 class Local:
@@ -57,7 +37,7 @@ class Local:
             # Python's garbage collection. However, a local only makes
             # sense defined at the global scope as well, in which case
             # the GC issue doesn't seem relevant.
-            context_var = ContextVar(f"werkzeug.Local<{id(self)}>.storage")
+            context_var = ContextVar(f"contextlocal.Local<{id(self)}>.storage")
 
         object.__setattr__(self, "_Local__storage", context_var)
 
@@ -130,7 +110,7 @@ class LocalStack(t.Generic[T]):
             # Python's garbage collection. However, a local only makes
             # sense defined at the global scope as well, in which case
             # the GC issue doesn't seem relevant.
-            context_var = ContextVar(f"werkzeug.LocalStack<{id(self)}>.storage")
+            context_var = ContextVar(f"contextlocal.LocalStack<{id(self)}>.storage")
 
         self._storage = context_var
 
@@ -181,77 +161,6 @@ class LocalStack(t.Generic[T]):
             show if the stack is empty.
         """
         return LocalProxy(self, name, unbound_message=unbound_message)
-
-
-class LocalManager:
-    """Manage releasing the data for the current context in one or more
-    :class:`Local` and :class:`LocalStack` objects.
-
-    This should not be needed for modern use cases, and may be removed
-    in the future.
-
-    :param locals: A local or list of locals to manage.
-
-    .. versionchanged:: 2.0
-        ``ident_func`` is deprecated and will be removed in Werkzeug
-         2.1.
-
-    .. versionchanged:: 0.7
-        The ``ident_func`` parameter was added.
-
-    .. versionchanged:: 0.6.1
-        The :func:`release_local` function can be used instead of a
-        manager.
-    """
-
-    __slots__ = ("locals",)
-
-    def __init__(
-        self,
-        locals: t.Optional[
-            t.Union[Local, LocalStack, t.Iterable[t.Union[Local, LocalStack]]]
-        ] = None,
-    ) -> None:
-        if locals is None:
-            self.locals = []
-        elif isinstance(locals, Local):
-            self.locals = [locals]
-        else:
-            self.locals = list(locals)  # type: ignore[arg-type]
-
-    def cleanup(self) -> None:
-        """Release the data in the locals for this context. Call this at
-        the end of each request or use :meth:`make_middleware`.
-        """
-        for local in self.locals:
-            release_local(local)
-
-    def make_middleware(self, app: "WSGIApplication") -> "WSGIApplication":
-        """Wrap a WSGI application so that local data is released
-        automatically after the response has been sent for a request.
-        """
-
-        def application(
-            environ: "WSGIEnvironment", start_response: "StartResponse"
-        ) -> t.Iterable[bytes]:
-            return ClosingIterator(app(environ, start_response), self.cleanup)
-
-        return application
-
-    def middleware(self, func: "WSGIApplication") -> "WSGIApplication":
-        """Like :meth:`make_middleware` but used as a decorator on the
-        WSGI application function.
-
-        .. code-block:: python
-
-            @manager.middleware
-            def application(environ, start_response):
-                ...
-        """
-        return update_wrapper(self.make_middleware(func), func)
-
-    def __repr__(self) -> str:
-        return f"<{type(self).__name__} storages: {len(self.locals)}>"
 
 
 class _ProxyLookup:
